@@ -6,6 +6,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.state import AgentState
 from app.agents.workers.base import BaseWorkerAgent
 from app.core.llm import get_llm
+from app.core.json_util import extract_json_from_llm
 
 logger = logging.getLogger("condigence.workers.comms")
 
@@ -54,17 +55,12 @@ class CommsAgent(BaseWorkerAgent):
                     SystemMessage(content=COMMS_SYSTEM_PROMPT),
                     HumanMessage(content=prompt_text)
                 ])
-                content = resp.content.strip()
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-
-                parsed = json.loads(content)
-                draft_subject = parsed.get("subject", draft_subject)
-                draft_recipient = parsed.get("recipient", draft_recipient)
-                draft_body = parsed.get("body", draft_body)
-                channel = parsed.get("channel", "EMAIL")
+                parsed = extract_json_from_llm(resp.content)
+                if parsed:
+                    draft_subject = parsed.get("subject", draft_subject)
+                    draft_recipient = parsed.get("recipient", draft_recipient)
+                    draft_body = parsed.get("body", draft_body)
+                    channel = parsed.get("channel", "EMAIL")
         except Exception as e:
             logger.warning(f"CommsAgent LLM fallback: {e}")
 

@@ -68,6 +68,13 @@ def route_from_worker(state: AgentState) -> str:
     next_step = state.get("next_step")
     if next_step and next_step in ["CommsAgent", "FinanceAgent", "ComplianceAgent", "ProjectAgent", "HRAgent", "AnalyticsAgent"]:
         return next_step
+    # Check if there are planned agents in strategic_plan not yet executed
+    strategic_plan = state.get("artifacts", {}).get("strategic_plan", {})
+    planned = strategic_plan.get("identified_agents", [])
+    completed_agents = {s.get("agent") for s in state.get("completed_steps", [])}
+    for agent_name in planned:
+        if agent_name not in completed_agents and agent_name in ["CommsAgent", "FinanceAgent", "ComplianceAgent", "ProjectAgent", "HRAgent", "AnalyticsAgent"]:
+            return agent_name
     return END
 
 

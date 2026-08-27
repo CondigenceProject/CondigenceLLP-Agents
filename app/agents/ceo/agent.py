@@ -6,6 +6,8 @@ from app.agents.state import AgentState
 from app.core.audit import audit_service
 from app.core.llm import get_llm
 
+from app.core.json_util import extract_json_from_llm
+
 logger = logging.getLogger("condigence.agents.ceo")
 
 CEO_SYSTEM_PROMPT = """You are the AI CEO of Condigence LLP.
@@ -46,18 +48,12 @@ class AICEOAgent:
                     HumanMessage(content=f"Strategic Goal: {goal}\nRequester Role: {requester_role}")
                 ]
                 resp = await llm.ainvoke(prompt_messages)
-                content = resp.content.strip()
-                # Remove json markdown formatting if present
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                
-                parsed = json.loads(content)
-                plan_steps = parsed.get("identified_agents", [])
-                directive = parsed.get("directive", directive)
-                reasoning = parsed.get("reasoning", reasoning)
-                entities = parsed.get("extracted_entities", {})
+                parsed = extract_json_from_llm(resp.content)
+                if parsed:
+                    plan_steps = parsed.get("identified_agents", [])
+                    directive = parsed.get("directive", directive)
+                    reasoning = parsed.get("reasoning", reasoning)
+                    entities = parsed.get("extracted_entities", {})
         except Exception as e:
             logger.warning(f"AI CEO LLM analysis fallback: {e}")
 

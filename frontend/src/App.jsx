@@ -26,15 +26,24 @@ import {
   Code2
 } from 'lucide-react';
 
+const QUICK_DIRECTIVES = [
+  { label: '💰 Invoice & Email', prompt: 'Draft monthly client invoice for Acme Global Corp for ₹50,000 and prepare notification email' },
+  { label: '🛡️ Form 11 Compliance', prompt: 'Check MCA statutory compliance deadline for Form 11 Annual Return and prepare sign-off dossier' },
+  { label: '👥 August Payroll', prompt: 'Calculate August payroll disbursement and prepare HR approval request' },
+  { label: '📊 Q3 P&L Report', prompt: 'Generate Q3 P&L report, margin breakdown, and cash flow health analysis' },
+  { label: '📁 Sync Notion Board', prompt: 'Sync Notion project board, detect blocked milestones and report sprint progress' }
+];
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
   const [health, setHealth] = useState(null);
+  const [serverOnline, setServerOnline] = useState(true);
   const [approvals, setApprovals] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [tasksHistory, setTasksHistory] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Command Center Goal execution state
   const [goalInput, setGoalInput] = useState('');
@@ -46,7 +55,12 @@ export default function App() {
     try {
       // 1. Health
       const hRes = await fetch('/health');
-      if (hRes.ok) setHealth(await hRes.json());
+      if (hRes.ok) {
+        setHealth(await hRes.json());
+        setServerOnline(true);
+      } else {
+        setServerOnline(false);
+      }
 
       // 2. Approvals
       const appRes = await fetch('/api/v1/approvals');
@@ -64,6 +78,7 @@ export default function App() {
       }
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
+      setServerOnline(false);
     }
   };
 
@@ -74,33 +89,43 @@ export default function App() {
   }, []);
 
   // Handle Goal Launch
-  const handleLaunchGoal = async (e) => {
-    e.preventDefault();
-    if (!goalInput.trim()) return;
+  const handleLaunchGoal = async (e, customPrompt = null) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const targetGoal = (customPrompt !== null ? customPrompt : goalInput).trim();
+    if (!targetGoal) return;
 
     setTaskInProgress(true);
     setRunningTask(null);
     setActionMsg('');
+    setErrorMsg('');
 
     try {
       const res = await fetch('/api/v1/agents/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          goal: goalInput,
+          goal: targetGoal,
           requester_role: 'OWNER',
           context: {}
         })
       });
+
       if (res.ok) {
         const data = await res.json();
         setRunningTask(data);
         setSelectedTask(data);
-        setGoalInput('');
+        if (!customPrompt) setGoalInput('');
+        setActionMsg(`✅ Strategic Directive successfully executed across ${data.steps?.length || 0} agents!`);
         fetchData();
+        setTimeout(() => setActionMsg(''), 5000);
+      } else {
+        const errJson = await res.json().catch(() => ({ detail: res.statusText }));
+        setErrorMsg(`Execution Failed (${res.status}): ${errJson.detail || 'Server could not complete multi-agent workflow.'}`);
       }
     } catch (err) {
       console.error('Task launch failed:', err);
+      setErrorMsg('Connection Error: Cannot communicate with the FastAPI backend at http://127.0.0.1:8000. Please ensure the backend server is running.');
+      setServerOnline(false);
     } finally {
       setTaskInProgress(false);
     }
@@ -108,6 +133,7 @@ export default function App() {
 
   // Handle Approval Action
   const handleApprovalAction = async (ticketId, action) => {
+    setErrorMsg('');
     try {
       const res = await fetch(`/api/v1/approvals/${ticketId}/action`, {
         method: 'POST',
@@ -121,9 +147,13 @@ export default function App() {
         setActionMsg(`Ticket ${ticketId} was successfully ${action.toLowerCase()}d.`);
         fetchData();
         setTimeout(() => setActionMsg(''), 4000);
+      } else {
+        const errJson = await res.json().catch(() => ({ detail: res.statusText }));
+        setErrorMsg(`Approval Action Failed (${res.status}): ${errJson.detail || 'Could not update ticket status.'}`);
       }
     } catch (err) {
       console.error('Approval action error:', err);
+      setErrorMsg(`Failed to connect to approval service: ${err.message}`);
     }
   };
 
@@ -234,19 +264,50 @@ export default function App() {
 
           <div className="system-status-bar">
             <div className="status-pill">
+              <div className={`status-dot ${serverOnline ? 'active' : 'idle'}`} />
+              <span>Backend API: {serverOnline ? 'Connected' : 'Offline'}</span>
+            </div>
+            <div className="status-pill">
               <div className={`status-dot ${health?.database_connected ? 'active' : 'idle'}`} />
-              <span>Atlas DB: {health?.database_connected ? 'Online' : 'Degraded'}</span>
+              <span>Atlas DB: {health?.database_connected ? 'Online' : 'Mock/Local'}</span>
             </div>
             <div className="status-pill">
               <div className={`status-dot ${health?.redis_connected ? 'active' : 'idle'}`} />
               <span>Redis: {health?.redis_connected ? 'Active' : 'Local'}</span>
             </div>
-            <div className="status-pill">
-              <div className={`status-dot ${health?.kafka_connected ? 'active' : 'idle'}`} />
-              <span>Kafka: {health?.kafka_connected ? 'Streaming' : 'Local'}</span>
-            </div>
           </div>
         </header>
+
+        {/* BACKEND OFFLINE ALERT */}
+        {!serverOnline && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            color: '#f87171',
+            padding: '14px 18px',
+            borderRadius: '10px',
+            marginBottom: '20px',
+            fontSize: '0.88rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <AlertCircle size={20} />
+              <span>
+                <strong>Backend Server Disconnected:</strong> FastAPI backend is not running at <code>http://127.0.0.1:8000</code>. Start it with <code>python main.py</code> in your project root to run agents.
+              </span>
+            </div>
+            <button
+              className="btn-secondary"
+              onClick={fetchData}
+              style={{ fontSize: '0.8rem', padding: '6px 12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={14} /> Reconnect
+            </button>
+          </div>
+        )}
 
         {actionMsg && (
           <div style={{
@@ -256,9 +317,38 @@ export default function App() {
             padding: '12px 18px',
             borderRadius: '10px',
             marginBottom: '20px',
-            fontSize: '0.9rem'
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            {actionMsg}
+            <span>{actionMsg}</span>
+            <button onClick={() => setActionMsg('')} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            color: '#f87171',
+            padding: '12px 18px',
+            borderRadius: '10px',
+            marginBottom: '20px',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={18} />
+              <span>{errorMsg}</span>
+            </div>
+            <button onClick={() => setErrorMsg('')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
           </div>
         )}
 
@@ -294,6 +384,36 @@ export default function App() {
           <div className="command-box">
             <h3><Sparkles size={18} color="#818cf8" /> Submit Strategic Directive to AI CEO</h3>
             <p>Enter an executive instruction. The AI CEO will parse intent, and the Supervisor will coordinate workers.</p>
+
+            {/* Quick Directive Templates */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', alignSelf: 'center', marginRight: '4px' }}>Quick Prompts:</span>
+              {QUICK_DIRECTIVES.map((tpl, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setGoalInput(tpl.prompt);
+                    handleLaunchGoal(null, tpl.prompt);
+                  }}
+                  disabled={taskInProgress}
+                  style={{
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    border: '1px solid rgba(99, 102, 241, 0.25)',
+                    color: '#a5b4fc',
+                    borderRadius: '20px',
+                    padding: '4px 12px',
+                    fontSize: '0.78rem',
+                    cursor: taskInProgress ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.25)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'; }}
+                >
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
             
             <form onSubmit={handleLaunchGoal} className="command-input-row">
               <input

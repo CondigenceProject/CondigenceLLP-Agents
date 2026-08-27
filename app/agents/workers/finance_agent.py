@@ -6,6 +6,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.state import AgentState
 from app.agents.workers.base import BaseWorkerAgent
 from app.core.llm import get_llm
+from app.core.json_util import extract_json_from_llm
 
 logger = logging.getLogger("condigence.workers.finance")
 
@@ -46,16 +47,12 @@ class FinanceAgent(BaseWorkerAgent):
                     SystemMessage(content=FINANCE_SYSTEM_PROMPT),
                     HumanMessage(content=f"Directive: {goal}\nContext: {json.dumps(artifacts)}")
                 ])
-                content = resp.content.strip()
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                parsed = json.loads(content)
-                client_name = parsed.get("client_name", client_name)
-                base_amount = float(parsed.get("base_amount", base_amount))
-                currency = parsed.get("currency", "INR")
-                hand_off_to_comms = parsed.get("hand_off_to_comms", True)
+                parsed = extract_json_from_llm(resp.content)
+                if parsed:
+                    client_name = parsed.get("client_name", client_name)
+                    base_amount = float(parsed.get("base_amount", base_amount))
+                    currency = parsed.get("currency", "INR")
+                    hand_off_to_comms = parsed.get("hand_off_to_comms", True)
         except Exception as e:
             logger.warning(f"FinanceAgent LLM fallback: {e}")
 
