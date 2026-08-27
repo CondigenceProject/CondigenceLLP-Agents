@@ -20,7 +20,10 @@ import {
   ArrowRight,
   Database,
   Cpu,
-  Layers
+  Layers,
+  History,
+  ChevronRight,
+  Code2
 } from 'lucide-react';
 
 export default function App() {
@@ -28,6 +31,8 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [approvals, setApprovals] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [tasksHistory, setTasksHistory] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
 
@@ -48,8 +53,15 @@ export default function App() {
       if (appRes.ok) setApprovals(await appRes.json());
 
       // 3. Audit Logs
-      const aRes = await fetch('/api/v1/audit/logs?limit=25');
+      const aRes = await fetch('/api/v1/audit/logs?limit=30');
       if (aRes.ok) setAuditLogs(await aRes.json());
+
+      // 4. Task History
+      const tRes = await fetch('/api/v1/agents/tasks');
+      if (tRes.ok) {
+        const tasks = await tRes.json();
+        setTasksHistory(tasks);
+      }
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
     }
@@ -83,6 +95,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setRunningTask(data);
+        setSelectedTask(data);
         setGoalInput('');
         fetchData();
       }
@@ -101,7 +114,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: action,
-          notes: `Actioned via Owner Portal by Vishal Aryan`
+          notes: `Actioned via Owner Portal by Admin`
         })
       });
       if (res.ok) {
@@ -163,6 +176,17 @@ export default function App() {
           </button>
 
           <button
+            className={`nav-item ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <div className="nav-item-content">
+              <History size={18} />
+              <span>Task History</span>
+            </div>
+            {tasksHistory.length > 0 && <span className="nav-badge" style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8' }}>{tasksHistory.length}</span>}
+          </button>
+
+          <button
             className={`nav-item ${activeTab === 'fleet' ? 'active' : ''}`}
             onClick={() => setActiveTab('fleet')}
           >
@@ -184,9 +208,9 @@ export default function App() {
         </nav>
 
         <div className="user-profile">
-          <div className="user-avatar">VA</div>
+          <div className="user-avatar">AD</div>
           <div className="user-info">
-            <div className="name">Vishal Aryan</div>
+            <div className="name">Admin</div>
             <div className="role">Owner • Strategic Oversight</div>
           </div>
         </div>
@@ -201,6 +225,7 @@ export default function App() {
               {activeTab === 'overview' && 'Executive Virtual Management'}
               {activeTab === 'approvals' && 'Human-in-the-Loop Approval Queue'}
               {activeTab === 'command' && 'AI CEO Directive Center'}
+              {activeTab === 'history' && 'Agent Execution & Directive History'}
               {activeTab === 'fleet' && 'Specialized Agent Fleet'}
               {activeTab === 'audit' && 'Immutable Audit Logs'}
             </h2>
@@ -258,9 +283,9 @@ export default function App() {
           </div>
 
           <div className="metric-card cyan">
-            <div className="icon-wrap"><ShieldCheck size={20} /></div>
-            <div className="value">100%</div>
-            <div className="label">Compliance Guardrails</div>
+            <div className="icon-wrap"><History size={20} /></div>
+            <div className="value">{tasksHistory.length}</div>
+            <div className="label">Total Directives Executed</div>
           </div>
         </div>
 
@@ -298,11 +323,15 @@ export default function App() {
             {runningTask && (
               <div className="task-live-box">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ fontSize: '0.92rem' }}>Task Execution Plan & Trace:</strong>
+                  <strong style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={16} color="#818cf8" />
+                    Task Execution Plan & Trace:
+                  </strong>
                   <span className="type-pill" style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8' }}>
                     Status: {runningTask.status}
                   </span>
                 </div>
+
                 <div className="task-steps">
                   {runningTask.steps?.map((step, idx) => (
                     <div key={idx} className="task-step">
@@ -312,10 +341,474 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+
                 {runningTask.summary && (
-                  <p style={{ marginTop: '12px', fontSize: '0.86rem', color: '#94a3b8' }}>
+                  <p style={{ marginTop: '12px', fontSize: '0.88rem', color: '#94a3b8' }}>
                     💡 <em>{runningTask.summary}</em>
                   </p>
+                )}
+
+                {/* Generated Artifacts Section */}
+                {runningTask.artifacts && Object.keys(runningTask.artifacts).length > 0 && (
+                  <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* INVOICE CARD */}
+                    {runningTask.artifacts.invoice_draft && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontWeight: 600, color: '#a5b4fc', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <DollarSign size={16} /> Generated Invoice Draft
+                          </span>
+                          <span className="type-pill invoice">{runningTask.artifacts.invoice_draft.status}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', fontSize: '0.84rem' }}>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Invoice #</span>
+                            <strong>{runningTask.artifacts.invoice_draft.invoice_number}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Client</span>
+                            <strong>{runningTask.artifacts.invoice_draft.client_name}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Base Amount</span>
+                            <span>₹{Number(runningTask.artifacts.invoice_draft.base_amount).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>GST (18%)</span>
+                            <span>₹{Number(runningTask.artifacts.invoice_draft.gst_amount).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Total Amount</span>
+                            <strong style={{ color: '#34d399' }}>₹{Number(runningTask.artifacts.invoice_draft.total_amount).toLocaleString('en-IN')}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* COMMS / EMAIL CARD */}
+                    {runningTask.artifacts.comms_draft && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: 600, color: '#6ee7b7', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Mail size={16} /> Drafted Client Email
+                          </span>
+                          <span className="type-pill email">{runningTask.artifacts.comms_draft.channel || 'EMAIL'}</span>
+                        </div>
+                        <div style={{ fontSize: '0.84rem', marginBottom: '6px' }}>
+                          <span style={{ color: '#64748b' }}>To: </span>
+                          <span>{runningTask.artifacts.comms_draft.recipient}</span>
+                        </div>
+                        <div style={{ fontSize: '0.84rem', marginBottom: '10px' }}>
+                          <span style={{ color: '#64748b' }}>Subject: </span>
+                          <strong>{runningTask.artifacts.comms_draft.subject}</strong>
+                        </div>
+                        <pre style={{
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          whiteSpace: 'pre-wrap',
+                          fontFamily: 'inherit',
+                          fontSize: '0.83rem',
+                          color: '#cbd5e1',
+                          margin: 0
+                        }}>
+                          {runningTask.artifacts.comms_draft.body}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* PAYROLL / HR CARD */}
+                    {runningTask.artifacts.payroll_draft && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(236, 72, 153, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontWeight: 600, color: '#f472b6', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Users size={16} /> Drafted Payroll & HR Authorization
+                          </span>
+                          <span className="type-pill payroll">{runningTask.artifacts.payroll_draft.status}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', fontSize: '0.84rem' }}>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Disbursement Month</span>
+                            <strong>{runningTask.artifacts.payroll_draft.month}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Team Headcount</span>
+                            <strong>{runningTask.artifacts.payroll_draft.employee_count} Employees</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Gross Payroll</span>
+                            <span>₹{Number(runningTask.artifacts.payroll_draft.total_gross_disbursement).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>TDS Deductions</span>
+                            <span>₹{Number(runningTask.artifacts.payroll_draft.statutory_deductions_tds).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Net Payable</span>
+                            <strong style={{ color: '#f472b6' }}>₹{Number(runningTask.artifacts.payroll_draft.net_payable).toLocaleString('en-IN')}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* COMPLIANCE CARD */}
+                    {runningTask.artifacts.compliance_filing && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(6, 182, 212, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: 600, color: '#67e8f9', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <ShieldCheck size={16} /> Statutory Compliance Dossier
+                          </span>
+                          <span className="type-pill compliance">{runningTask.artifacts.compliance_filing.status}</span>
+                        </div>
+                        <div style={{ fontSize: '0.84rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                          <strong>Form: </strong> {runningTask.artifacts.compliance_filing.form} | <strong>Authority: </strong> {runningTask.artifacts.compliance_filing.statutory_body}
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                          📅 Deadline: <strong>{runningTask.artifacts.compliance_filing.upcoming_deadline}</strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PROJECT / NOTION CARD */}
+                    {runningTask.artifacts.project_status && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 600, color: '#c084fc', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <FolderKanban size={16} /> Project Board Sync ({runningTask.artifacts.project_status.platform})
+                          </span>
+                          <span className="type-pill" style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc' }}>Active</span>
+                        </div>
+                        <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: '4px 0 8px' }}>
+                          {runningTask.artifacts.project_status.highlight}
+                        </p>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                          Tasks on track: <strong>{runningTask.artifacts.project_status.tasks_on_track}</strong> | At risk: <strong>{runningTask.artifacts.project_status.tasks_at_risk}</strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ANALYTICS / P&L CARD */}
+                    {runningTask.artifacts.financial_report && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                        borderRadius: '10px',
+                        padding: '16px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: 600, color: '#fde047', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <BarChart3 size={16} /> Executive P&L & Revenue Metrics
+                          </span>
+                          <span className="type-pill" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#fde047' }}>{runningTask.artifacts.financial_report.period}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', fontSize: '0.84rem' }}>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Gross Revenue</span>
+                            <strong style={{ color: '#34d399' }}>₹{Number(runningTask.artifacts.financial_report.gross_revenue).toLocaleString('en-IN')}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>OpEx</span>
+                            <span>₹{Number(runningTask.artifacts.financial_report.operating_expenses).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Net Margin</span>
+                            <strong>{runningTask.artifacts.financial_report.net_operating_margin}</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Cash Health</span>
+                            <strong style={{ color: '#38bdf8' }}>{runningTask.artifacts.financial_report.cash_flow_health}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TASK HISTORY VIEW (When History Tab is selected) */}
+        {activeTab === 'history' && (
+          <div>
+            <div className="section-header">
+              <h3>Directives & Multi-Agent Execution History ({tasksHistory.length})</h3>
+              <button className="btn-secondary" onClick={fetchData} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.82rem' }}>
+                <RefreshCw size={14} /> Refresh History
+              </button>
+            </div>
+
+            {tasksHistory.length === 0 ? (
+              <div style={{
+                background: 'var(--bg-card)',
+                padding: '30px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: '#64748b',
+                border: '1px dashed var(--border-subtle)'
+              }}>
+                <Clock size={32} color="#6366f1" style={{ margin: '0 auto 10px' }} />
+                <p>No task history yet. Submit a directive in "AI Command" to see agents in action.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: selectedTask ? '1fr 1.2fr' : '1fr', gap: '20px' }}>
+                {/* Tasks List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {tasksHistory.map((task) => (
+                    <div
+                      key={task.task_id}
+                      onClick={() => setSelectedTask(task)}
+                      style={{
+                        background: selectedTask?.task_id === task.task_id ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-card)',
+                        border: selectedTask?.task_id === task.task_id ? '1px solid #6366f1' : '1px solid var(--border-subtle)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.9rem', flex: 1, marginRight: '10px' }}>
+                          {task.goal}
+                        </span>
+                        <span className={`type-pill ${task.status === 'COMPLETED' ? 'compliance' : 'invoice'}`}>
+                          {task.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                        <span>🕒 {new Date(task.created_at).toLocaleTimeString()}</span>
+                        <span>🤖 {task.steps?.length || 0} Agents Executed</span>
+                        {task.artifacts && Object.keys(task.artifacts).length > 0 && (
+                          <span style={{ color: '#34d399' }}>📦 {Object.keys(task.artifacts).length} Artifacts</span>
+                        )}
+                      </div>
+
+                      {task.summary && (
+                        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {task.summary}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selected Task Deep-Dive Panel */}
+                {selectedTask && (
+                  <div style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    height: 'fit-content'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#a5b4fc' }}>
+                        <Sparkles size={16} /> Detailed Execution Trace
+                      </h4>
+                      <span className="type-pill" style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8' }}>
+                        {selectedTask.status}
+                      </span>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block' }}>Directive:</span>
+                      <p style={{ margin: '4px 0 0', fontWeight: 600, fontSize: '0.9rem' }}>{selectedTask.goal}</p>
+                    </div>
+
+                    {/* Stepper Breakdown */}
+                    <div style={{ marginBottom: '18px' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block', marginBottom: '8px' }}>Agent Execution Flow:</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {selectedTask.steps?.map((step, idx) => (
+                          <div key={idx} style={{
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px',
+                            padding: '10px 14px'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span className="agent-tag" style={{ fontSize: '0.78rem' }}>{step.agent}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#34d399' }}>✓ {step.status}</span>
+                            </div>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 500, color: '#e2e8f0', marginTop: '4px' }}>
+                              Action: <code>{step.action}</code>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Generated Artifacts Visual Display */}
+                    {selectedTask.artifacts && Object.keys(selectedTask.artifacts).length > 0 && (
+                      <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem', display: 'block' }}>Generated Artifacts:</span>
+
+                        {/* INVOICE CARD */}
+                        {selectedTask.artifacts.invoice_draft && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ fontWeight: 600, color: '#a5b4fc', fontSize: '0.86rem' }}>💵 Invoice Draft</span>
+                              <span className="type-pill invoice">{selectedTask.artifacts.invoice_draft.invoice_number}</span>
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+                              Client: <strong>{selectedTask.artifacts.invoice_draft.client_name}</strong> | Total: <strong style={{ color: '#34d399' }}>₹{Number(selectedTask.artifacts.invoice_draft.total_amount).toLocaleString('en-IN')}</strong>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* EMAIL CARD */}
+                        {selectedTask.artifacts.comms_draft && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontWeight: 600, color: '#6ee7b7', fontSize: '0.86rem' }}>✉️ Client Email Draft</span>
+                              <span className="type-pill email">{selectedTask.artifacts.comms_draft.channel || 'EMAIL'}</span>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '4px' }}>
+                              <strong>Subject: </strong>{selectedTask.artifacts.comms_draft.subject}
+                            </div>
+                            <pre style={{
+                              background: 'rgba(0, 0, 0, 0.3)',
+                              padding: '8px',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              color: '#94a3b8',
+                              whiteSpace: 'pre-wrap',
+                              margin: 0
+                            }}>
+                              {selectedTask.artifacts.comms_draft.body}
+                            </pre>
+                          </div>
+                        )}
+
+                        {/* PAYROLL CARD */}
+                        {selectedTask.artifacts.payroll_draft && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(236, 72, 153, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ fontWeight: 600, color: '#f472b6', fontSize: '0.86rem' }}>📋 Payroll Disbursement</span>
+                              <span className="type-pill payroll">{selectedTask.artifacts.payroll_draft.month}</span>
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginBottom: '6px' }}>
+                              Headcount: <strong>{selectedTask.artifacts.payroll_draft.employee_count} Employees</strong> | Net Payable: <strong style={{ color: '#f472b6' }}>₹{Number(selectedTask.artifacts.payroll_draft.net_payable).toLocaleString('en-IN')}</strong>
+                            </div>
+                            {selectedTask.artifacts.payroll_draft.department_breakdown && (
+                              <div style={{ fontSize: '0.76rem', color: '#94a3b8', background: 'rgba(0,0,0,0.2)', padding: '6px 8px', borderRadius: '4px' }}>
+                                Departments: {JSON.stringify(selectedTask.artifacts.payroll_draft.department_breakdown)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* COMPLIANCE CARD */}
+                        {selectedTask.artifacts.compliance_filing && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(6, 182, 212, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontWeight: 600, color: '#67e8f9', fontSize: '0.86rem' }}>🛡️ Compliance Dossier</span>
+                              <span className="type-pill compliance">{selectedTask.artifacts.compliance_filing.form}</span>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                              Authority: <strong>{selectedTask.artifacts.compliance_filing.statutory_body}</strong> | Deadline: <strong>{selectedTask.artifacts.compliance_filing.upcoming_deadline}</strong>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PROJECT CARD */}
+                        {selectedTask.artifacts.project_status && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(168, 85, 247, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <span style={{ fontWeight: 600, color: '#c084fc', fontSize: '0.86rem', display: 'block', marginBottom: '4px' }}>
+                              📁 Project Sync ({selectedTask.artifacts.project_status.platform})
+                            </span>
+                            <p style={{ fontSize: '0.8rem', color: '#cbd5e1', margin: 0 }}>
+                              {selectedTask.artifacts.project_status.highlight}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* ANALYTICS CARD */}
+                        {selectedTask.artifacts.financial_report && (
+                          <div style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '1px solid rgba(234, 179, 8, 0.3)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}>
+                            <span style={{ fontWeight: 600, color: '#fde047', fontSize: '0.86rem', display: 'block', marginBottom: '4px' }}>
+                              📊 P&L Metrics ({selectedTask.artifacts.financial_report.period})
+                            </span>
+                            <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                              Revenue: <strong style={{ color: '#34d399' }}>₹{Number(selectedTask.artifacts.financial_report.gross_revenue).toLocaleString('en-IN')}</strong> | Margin: <strong>{selectedTask.artifacts.financial_report.net_operating_margin}</strong>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Collapsible Raw JSON Details */}
+                        <details style={{ marginTop: '8px', fontSize: '0.78rem', color: '#64748b' }}>
+                          <summary style={{ cursor: 'pointer', userSelect: 'none' }}>View Raw JSON Data</summary>
+                          <pre style={{
+                            background: 'rgba(0, 0, 0, 0.5)',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            color: '#38bdf8',
+                            overflowX: 'auto',
+                            maxHeight: '200px',
+                            marginTop: '6px'
+                          }}>
+                            {JSON.stringify(selectedTask.artifacts, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -532,3 +1025,4 @@ export default function App() {
     </div>
   );
 }
+

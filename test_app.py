@@ -43,7 +43,7 @@ async def test_end_to_end_flow():
         # 4. Human-In-The-Loop Action: Approve the email/invoice draft
         action_payload = {
             "action": "APPROVE",
-            "notes": "Approved by Owner Vishal Aryan for client release"
+            "notes": "Approved by Owner Admin for client release"
         }
         res = await client.post(f"/api/v1/approvals/{target_approval['id']}/action", json=action_payload)
         print(f"\n4. Approval Action Response: {res.status_code} -> Status: {res.json()['status']}")

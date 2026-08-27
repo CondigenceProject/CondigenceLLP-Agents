@@ -15,8 +15,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # LLM & Observability
-    OPENAI_API_KEY: str = "mock_key"
+    LLM_PROVIDER: str = "openai"  # "openai" | "groq" | "gemini"
+    OPENAI_API_KEY: Optional[str] = "mock_key"
     OPENAI_MODEL: str = "gpt-4o"
+    
+    # Groq Cloud (Free high-speed testing)
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    
+    # Google Gemini (Free generous quota via AI Studio)
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-flash-latest"
+
     LANGSMITH_TRACING: bool = False
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGSMITH_API_KEY: Optional[str] = None

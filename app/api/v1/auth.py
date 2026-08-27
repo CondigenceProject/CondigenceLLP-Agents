@@ -13,7 +13,7 @@ MOCK_USERS = {
         "id": "usr_01",
         "username": "admin",
         "email": "owner@condigence.com",
-        "full_name": "Vishal Aryan",
+        "full_name": "Admin",
         "role": "OWNER",
         "password_hash": "admin123"
     },

@@ -1,9 +1,27 @@
+import json
 import logging
 from typing import Any, Dict
+from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.state import AgentState
 from app.agents.workers.base import BaseWorkerAgent
+from app.core.llm import get_llm
 
 logger = logging.getLogger("condigence.workers.analytics")
+
+ANALYTICS_SYSTEM_PROMPT = """You are the Business Intelligence & Analytics Specialist Agent (AnalyticsAgent) of Condigence LLP.
+Your job is to generate executive P&L metrics, revenue dashboards, cash flow forecasts, and operational analytics.
+Output valid JSON:
+{
+  "period": "Period e.g. Q3 2026 or Current Month",
+  "gross_revenue": 1450000.0,
+  "operating_expenses": 620000.0,
+  "net_operating_margin": "57.2%",
+  "outstanding_receivables": 185000.0,
+  "cash_flow_health": "STRONG",
+  "key_insights": ["Insight 1", "Insight 2"],
+  "strategic_recommendations": "Recommendation based on the metrics"
+}
+"""
 
 
 class AnalyticsAgent(BaseWorkerAgent):
@@ -15,6 +33,7 @@ class AnalyticsAgent(BaseWorkerAgent):
 
     async def execute(self, state: AgentState) -> Dict[str, Any]:
         goal = state.get("goal", "")
+        artifacts = state.get("artifacts", {})
         logger.info(f"AnalyticsAgent compiling metrics for: '{goal}'")
         
         financial_insights = {
@@ -23,8 +42,27 @@ class AnalyticsAgent(BaseWorkerAgent):
             "operating_expenses": 620000.0,
             "net_operating_margin": "57.2%",
             "outstanding_receivables": 185000.0,
-            "cash_flow_health": "STRONG"
+            "cash_flow_health": "STRONG",
+            "key_insights": ["Healthy cash flow runway", "Receivables collection on track"],
+            "strategic_recommendations": f"Analytics compiled for: {goal}"
         }
+
+        try:
+            llm = get_llm(temperature=0.1)
+            if llm:
+                resp = await llm.ainvoke([
+                    SystemMessage(content=ANALYTICS_SYSTEM_PROMPT),
+                    HumanMessage(content=f"Directive: {goal}\nContext: {json.dumps(artifacts)}")
+                ])
+                content = resp.content.strip()
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0].strip()
+                parsed = json.loads(content)
+                financial_insights.update(parsed)
+        except Exception as e:
+            logger.warning(f"AnalyticsAgent LLM fallback: {e}")
 
         step_record = await self.log_action(
             action="GENERATE_P_AND_L_REPORT",
@@ -38,8 +76,9 @@ class AnalyticsAgent(BaseWorkerAgent):
             "current_agent": "AI_Supervisor",
             "next_step": None,
             "status": "COMPLETED",
-            "summary": "Executive P&L and revenue report compiled successfully."
+            "summary": f"Executive analytics & P&L report for {financial_insights.get('period', 'current period')} compiled successfully."
         }
 
 
 analytics_agent = AnalyticsAgent()
+

@@ -47,21 +47,72 @@ async def run_agent_task(
         logger.error(f"Execution error in LangGraph: {e}")
         raise HTTPException(status_code=500, detail=f"Agent execution error: {str(e)}")
 
-    # Check if an approval was requested and stage it
-    if final_state.get("requires_approval") and final_state.get("approval_payload"):
-        app_id = final_state.get("pending_approval_id") or str(uuid.uuid4())[:8]
+    # Stage approvals for all generated sensitive artifacts
+    artifacts = final_state.get("artifacts", {})
+    if "invoice_draft" in artifacts:
+        inv = artifacts["invoice_draft"]
+        inv_id = str(uuid.uuid4())[:8]
         ticket = ApprovalTicket(
-            id=app_id,
+            id=inv_id,
             task_id=task_id,
-            agent_name=final_state.get("current_agent") or "WorkerAgent",
-            approval_type=final_state.get("approval_type", ApprovalType.GENERAL),
-            title=f"Review requested for task: {req.goal[:40]}...",
-            description=final_state.get("summary") or "Action staged for human approval.",
-            payload=final_state.get("approval_payload", {}),
+            agent_name="FinanceAgent",
+            approval_type=ApprovalType.INVOICE,
+            title=f"Authorize Invoice {inv.get('invoice_number')} for {inv.get('client_name', 'Client')}",
+            description=f"Draft invoice of {inv.get('currency', 'INR')} {inv.get('total_amount', 0):,.2f} prepared for {inv.get('client_name')}.",
+            payload=inv,
             status=ApprovalStatus.PENDING,
             required_role="OWNER"
         )
         register_approval_ticket(ticket)
+
+    if "comms_draft" in artifacts:
+        comms = artifacts["comms_draft"]
+        comms_id = final_state.get("pending_approval_id") or str(uuid.uuid4())[:8]
+        ticket = ApprovalTicket(
+            id=comms_id,
+            task_id=task_id,
+            agent_name="CommsAgent",
+            approval_type=ApprovalType.CLIENT_EMAIL,
+            title=f"Approve Email: {comms.get('subject', 'Client Communication')[:45]}",
+            description=f"Email drafted to {comms.get('recipient', 'client@example.com')}.",
+            payload=comms,
+            status=ApprovalStatus.PENDING,
+            required_role="OWNER"
+        )
+        register_approval_ticket(ticket)
+
+    if "compliance_filing" in artifacts:
+        comp = artifacts["compliance_filing"]
+        comp_id = str(uuid.uuid4())[:8]
+        ticket = ApprovalTicket(
+            id=comp_id,
+            task_id=task_id,
+            agent_name="ComplianceAgent",
+            approval_type=ApprovalType.COMPLIANCE_FILING,
+            title=f"Sign-off on Statutory Filing: {comp.get('form', 'Compliance Form')}",
+            description=f"Statutory filing for {comp.get('statutory_body', 'MCA/ROC')}.",
+            payload=comp,
+            status=ApprovalStatus.PENDING,
+            required_role="OWNER"
+        )
+        register_approval_ticket(ticket)
+
+    if "payroll_draft" in artifacts:
+        pay = artifacts["payroll_draft"]
+        pay_id = str(uuid.uuid4())[:8]
+        ticket = ApprovalTicket(
+            id=pay_id,
+            task_id=task_id,
+            agent_name="HRAgent",
+            approval_type=ApprovalType.PAYROLL,
+            title=f"Disbursement Approval: Payroll {pay.get('month', '')}",
+            description=f"Payroll disbursement of INR {pay.get('net_payable', 0):,.2f}.",
+            payload=pay,
+            status=ApprovalStatus.PENDING,
+            required_role="OWNER"
+        )
+        register_approval_ticket(ticket)
+
 
     steps = [
         TaskStep(
@@ -92,7 +143,8 @@ async def run_agent_task(
 
 @router.get("/tasks", response_model=List[AgentTaskResponse])
 async def list_tasks():
-    return list(_TASKS_DB.values())
+    return sorted(_TASKS_DB.values(), key=lambda x: x.created_at, reverse=True)
+
 
 
 @router.get("/tasks/{task_id}", response_model=AgentTaskResponse)
