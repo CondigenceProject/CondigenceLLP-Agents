@@ -34,6 +34,8 @@ const QUICK_DIRECTIVES = [
   { label: '📁 Sync Notion Board', prompt: 'Sync Notion project board, detect blocked milestones and report sprint progress' }
 ];
 
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('overview');
   const [health, setHealth] = useState(null);
@@ -54,7 +56,7 @@ export default function App() {
   const fetchData = async () => {
     try {
       // 1. Health
-      const hRes = await fetch('/health');
+      const hRes = await fetch(`${API_BASE}/health`);
       if (hRes.ok) {
         setHealth(await hRes.json());
         setServerOnline(true);
@@ -63,15 +65,15 @@ export default function App() {
       }
 
       // 2. Approvals
-      const appRes = await fetch('/api/v1/approvals');
+      const appRes = await fetch(`${API_BASE}/api/v1/approvals`);
       if (appRes.ok) setApprovals(await appRes.json());
 
       // 3. Audit Logs
-      const aRes = await fetch('/api/v1/audit/logs?limit=30');
+      const aRes = await fetch(`${API_BASE}/api/v1/audit/logs?limit=30`);
       if (aRes.ok) setAuditLogs(await aRes.json());
 
       // 4. Task History
-      const tRes = await fetch('/api/v1/agents/tasks');
+      const tRes = await fetch(`${API_BASE}/api/v1/agents/tasks`);
       if (tRes.ok) {
         const tasks = await tRes.json();
         setTasksHistory(tasks);
@@ -100,7 +102,7 @@ export default function App() {
     setErrorMsg('');
 
     try {
-      const res = await fetch('/api/v1/agents/run', {
+      const res = await fetch(`${API_BASE}/api/v1/agents/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -124,7 +126,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Task launch failed:', err);
-      setErrorMsg('Connection Error: Cannot communicate with the FastAPI backend at http://127.0.0.1:8000. Please ensure the backend server is running.');
+      setErrorMsg(`Connection Error: Cannot communicate with the FastAPI backend at ${API_BASE || 'http://127.0.0.1:8000'}.`);
       setServerOnline(false);
     } finally {
       setTaskInProgress(false);
@@ -135,7 +137,7 @@ export default function App() {
   const handleApprovalAction = async (ticketId, action) => {
     setErrorMsg('');
     try {
-      const res = await fetch(`/api/v1/approvals/${ticketId}/action`, {
+      const res = await fetch(`${API_BASE}/api/v1/approvals/${ticketId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
