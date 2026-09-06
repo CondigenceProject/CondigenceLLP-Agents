@@ -30,6 +30,9 @@ class MongoDBManager:
                 f"MongoDB connection offline ({type(e).__name__}). Running in development mode with in-memory persistence."
             )
 
+    def get_database(self) -> Optional[AsyncIOMotorDatabase]:
+        return self.db
+
     async def disconnect(self):
         if self.client:
             logger.info("Closing MongoDB connection...")
