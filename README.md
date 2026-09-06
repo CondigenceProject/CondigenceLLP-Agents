@@ -1,6 +1,5 @@
 <div align="center">
 
-  <img src="./Condigence.jpeg" alt="Condigence LLP Logo" width="180" style="border-radius: 12px; margin-bottom: 12px;" />
 
   # ⚡ Condigence LLP — Autonomous Multi-Agent AI Operations
   ### Enterprise-Grade Agentic Workflow Orchestration & Human-in-the-Loop (HITL) Command Center
