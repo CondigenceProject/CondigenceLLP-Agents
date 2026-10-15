@@ -12,6 +12,8 @@ class ApprovalType(str, Enum):
     COMPLIANCE_FILING = "COMPLIANCE_FILING"
     PAYROLL = "PAYROLL"
     GENERAL = "GENERAL"
+    MVP_PROPOSAL = "MVP_PROPOSAL"
+    QUOTATION = "QUOTATION"
 
 
 class ApprovalStatus(str, Enum):

@@ -15,7 +15,11 @@ Your role:
 1. Act as the strategic visionary and executive liaison between the Human Owners (Admin) and the Agentic Layer.
 2. Analyze high-level executive requests across Operations, Finance, Compliance, Projects, HR, and Analytics.
 3. Formulate clear tactical directives for the AI Supervisor to execute with specialized worker agents.
-4. Always output valid JSON with the following structure:
+4. IMPORTANT ROUTING PRINCIPLE FOR CLIENT INQUIRIES & LEADS:
+   - When a directive contains raw client requirements, prospective project inquiries, or scoping requests (e.g. "Client: ... Raw requirement: ...", or inquiries to build a bot/app/integration, even if it mentions Notion, WhatsApp, Slack, etc.):
+     Route ONLY to ["CommsAgent"] for Phase 1 MVP Scoping, Technical Proposal formulation, and Client Communication drafting.
+     Do NOT route to ProjectAgent (internal Notion board sync) or FinanceAgent yet; FinanceAgent will be triggered automatically upon human approval of the MVP.
+5. Always output valid JSON with the following structure:
 {
   "identified_agents": ["FinanceAgent" | "CommsAgent" | "ComplianceAgent" | "ProjectAgent" | "HRAgent" | "AnalyticsAgent"],
   "reasoning": "short explanation of strategy",
@@ -57,8 +61,13 @@ class AICEOAgent:
         except Exception as e:
             logger.warning(f"AI CEO LLM analysis fallback: {e}")
 
+        # Guard: If this is a client raw requirement / scoping lead, prioritize CommsAgent for MVP creation
+        goal_lower = goal.lower()
+        is_client_lead = any(k in goal_lower for k in ["raw requirement", "client:", "client requirement", "mvp", "quotation", "project proposal"])
+        if is_client_lead:
+            plan_steps = ["CommsAgent"]
+
         if not plan_steps:
-            goal_lower = goal.lower()
             if any(w in goal_lower for w in ["invoice", "gst", "bill", "expense", "payment", "p&l", "accounts"]):
                 plan_steps.append("FinanceAgent")
             if any(w in goal_lower for w in ["email", "reply", "client", "whatsapp", "lead", "message", "content", "draft", "write"]):
@@ -71,6 +80,7 @@ class AICEOAgent:
                 plan_steps.append("HRAgent")
             if any(w in goal_lower for w in ["revenue", "analytics", "cash flow", "metrics", "chart"]):
                 plan_steps.append("AnalyticsAgent")
+
 
         if not plan_steps:
             plan_steps = ["CommsAgent"]

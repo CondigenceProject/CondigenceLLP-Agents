@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 
 const QUICK_DIRECTIVES = [
+  { label: '🚀 Client MVP & Quotation', prompt: 'Client: Nexus Retail (contact: rishav.condigence@gmail.com). Raw requirement: Hume ek AI WhatsApp customer support bot chahiye hamare e-commerce store ke liye, jo order tracking bata sake, Notion inventory se connect ho, aur agar customer gussa ho toh human team ko notify kare. Timeline urgent hai around 3 weeks.' },
   { label: '💰 Invoice & Email', prompt: 'Draft monthly client invoice for Acme Global Corp for ₹50,000 and prepare notification email' },
   { label: '🛡️ Form 11 Compliance', prompt: 'Check MCA statutory compliance deadline for Form 11 Annual Return and prepare sign-off dossier' },
   { label: '👥 August Payroll', prompt: 'Calculate August payroll disbursement and prepare HR approval request' },
@@ -51,6 +52,11 @@ export default function App() {
   const [goalInput, setGoalInput] = useState('');
   const [runningTask, setRunningTask] = useState(null);
   const [taskInProgress, setTaskInProgress] = useState(false);
+
+  // HITL Approval editing state
+  const [editingTicketId, setEditingTicketId] = useState(null);
+  const [editedPayloadText, setEditedPayloadText] = useState('');
+  const [approvalFilter, setApprovalFilter] = useState('ALL');
 
   // Fetch initial data
   const fetchData = async () => {
@@ -134,16 +140,20 @@ export default function App() {
   };
 
   // Handle Approval Action
-  const handleApprovalAction = async (ticketId, action) => {
+  const handleApprovalAction = async (ticketId, action, modifiedPayload = null) => {
     setErrorMsg('');
     try {
+      const bodyPayload = {
+        action: action,
+        notes: `Actioned via Owner Portal by Admin`
+      };
+      if (modifiedPayload) {
+        bodyPayload.modified_payload = modifiedPayload;
+      }
       const res = await fetch(`${API_BASE}/api/v1/approvals/${ticketId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: action,
-          notes: `Actioned via Owner Portal by Admin`
-        })
+        body: JSON.stringify(bodyPayload)
       });
       if (res.ok) {
         setActionMsg(`Ticket ${ticketId} was successfully ${action.toLowerCase()}d.`);
@@ -473,6 +483,137 @@ export default function App() {
                 {/* Generated Artifacts Section */}
                 {runningTask.artifacts && Object.keys(runningTask.artifacts).length > 0 && (
                   <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* MVP PROPOSAL CARD */}
+                    {runningTask.artifacts.mvp_proposal && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        border: '1px solid rgba(139, 92, 246, 0.4)',
+                        borderRadius: '12px',
+                        padding: '18px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontWeight: 600, color: '#c4b5fd', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Sparkles size={16} /> Phase 1 MVP Scope & Specification
+                          </span>
+                          <span className="type-pill mvp">⚡ {runningTask.artifacts.mvp_proposal.timeline_weeks} Weeks Delivery</span>
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#e2e8f0', marginBottom: '10px' }}>
+                          <strong>Project: </strong> {runningTask.artifacts.mvp_proposal.project_name} | <strong>Client: </strong> {runningTask.artifacts.mvp_proposal.client_name} ({runningTask.artifacts.mvp_proposal.contact_email})
+                        </div>
+                        <p style={{ fontSize: '0.84rem', color: '#94a3b8', marginBottom: '12px', lineHeight: '1.5' }}>
+                          {runningTask.artifacts.mvp_proposal.summary}
+                        </p>
+                        
+                        {/* P0 Features */}
+                        {runningTask.artifacts.mvp_proposal.p0_features && (
+                          <div style={{ marginBottom: '12px' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a78bfa', marginBottom: '6px', textTransform: 'uppercase' }}>
+                              Core MVP Modules (P0):
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {runningTask.artifacts.mvp_proposal.p0_features.map((feat, fIdx) => (
+                                <div key={fIdx} style={{
+                                  background: 'rgba(0,0,0,0.3)',
+                                  borderRadius: '6px',
+                                  padding: '8px 12px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '0.82rem'
+                                }}>
+                                  <div>
+                                    <strong style={{ color: '#f1f5f9' }}>{feat.feature}: </strong>
+                                    <span style={{ color: '#94a3b8' }}>{feat.description}</span>
+                                  </div>
+                                  <span style={{ color: '#818cf8', fontWeight: 600, marginLeft: '10px', whiteSpace: 'nowrap' }}>
+                                    {feat.effort_days}d
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Out of Scope & Tech Stack */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.8rem' }}>
+                          {runningTask.artifacts.mvp_proposal.out_of_scope && (
+                            <div>
+                              <div style={{ color: '#f87171', fontWeight: 600, marginBottom: '4px' }}>Deferred to Phase 2:</div>
+                              <ul style={{ margin: 0, paddingLeft: '16px', color: '#94a3b8' }}>
+                                {runningTask.artifacts.mvp_proposal.out_of_scope.map((item, idx) => (
+                                  <li key={idx}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {runningTask.artifacts.mvp_proposal.tech_stack && (
+                            <div>
+                              <div style={{ color: '#38bdf8', fontWeight: 600, marginBottom: '4px' }}>Recommended Stack:</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {runningTask.artifacts.mvp_proposal.tech_stack.map((t, idx) => (
+                                  <span key={idx} className="tool-tag">{t}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* QUOTATION CARD */}
+                    {runningTask.artifacts.quotation && (
+                      <div style={{
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        borderRadius: '12px',
+                        padding: '18px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontWeight: 600, color: '#6ee7b7', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <DollarSign size={16} /> Market-Standard Commercial Quotation
+                          </span>
+                          <span className="type-pill quotation">{runningTask.artifacts.quotation.quotation_number}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', fontSize: '0.84rem', marginBottom: '14px' }}>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Dev Subtotal</span>
+                            <span>₹{Number(runningTask.artifacts.quotation.dev_subtotal || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Contingency (10%)</span>
+                            <span>₹{Number(runningTask.artifacts.quotation.contingency_amount || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Cloud/API Infra</span>
+                            <span>₹{Number(runningTask.artifacts.quotation.cloud_infra_allowance || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>GST (18%)</span>
+                            <span>₹{Number(runningTask.artifacts.quotation.gst_amount || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b', display: 'block' }}>Grand Total (INR)</span>
+                            <strong style={{ color: '#34d399', fontSize: '1rem' }}>₹{Number(runningTask.artifacts.quotation.grand_total || 0).toLocaleString('en-IN')}</strong>
+                          </div>
+                        </div>
+
+                        {/* Milestones */}
+                        {runningTask.artifacts.quotation.milestones && (
+                          <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.8rem' }}>
+                            <div style={{ color: '#94a3b8', fontWeight: 600, marginBottom: '6px' }}>Milestone Payment Terms:</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {runningTask.artifacts.quotation.milestones.map((ms, idx) => (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+                                  <span>{ms.phase} ({ms.percentage}%)</span>
+                                  <strong style={{ color: '#6ee7b7' }}>₹{Number(ms.amount).toLocaleString('en-IN')}</strong>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* INVOICE CARD */}
                     {runningTask.artifacts.invoice_draft && (
                       <div style={{
@@ -938,70 +1079,321 @@ export default function App() {
         )}
 
         {/* HITL APPROVALS SECTION */}
-        {(activeTab === 'overview' || activeTab === 'approvals') && (
-          <div>
-            <div className="section-header">
-              <h3>Human-in-the-Loop Pending Approvals ({pendingCount})</h3>
-            </div>
+        {(activeTab === 'overview' || activeTab === 'approvals') && (() => {
+          const pendingApprovals = approvals.filter(a => a.status === 'PENDING');
+          const resolvedApprovals = approvals.filter(a => a.status !== 'PENDING');
+          const displayedApprovals = approvalFilter === 'PENDING'
+            ? pendingApprovals
+            : approvalFilter === 'APPROVED'
+            ? resolvedApprovals
+            : approvals;
 
-            {approvals.filter(a => a.status === 'PENDING').length === 0 ? (
-              <div style={{
-                background: 'var(--bg-card)',
-                padding: '30px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                color: '#64748b',
-                border: '1px dashed var(--border-subtle)',
-                marginBottom: '32px'
-              }}>
-                <CheckCircle2 size={32} color="#10b981" style={{ margin: '0 auto 10px' }} />
-                <p>All items have been reviewed. No pending approvals in queue.</p>
+          return (
+            <div>
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <h3>Human-in-the-Loop Approvals ({displayedApprovals.length})</h3>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="type-pill"
+                    style={{
+                      background: approvalFilter === 'PENDING' ? '#6366f1' : 'rgba(99, 102, 241, 0.1)',
+                      color: approvalFilter === 'PENDING' ? '#ffffff' : '#a5b4fc',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      padding: '6px 14px',
+                      fontSize: '0.8rem'
+                    }}
+                    onClick={() => setApprovalFilter('PENDING')}
+                  >
+                    ⏳ Pending ({pendingApprovals.length})
+                  </button>
+                  <button
+                    className="type-pill"
+                    style={{
+                      background: approvalFilter === 'APPROVED' ? '#10b981' : 'rgba(16, 185, 129, 0.1)',
+                      color: approvalFilter === 'APPROVED' ? '#ffffff' : '#6ee7b7',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      padding: '6px 14px',
+                      fontSize: '0.8rem'
+                    }}
+                    onClick={() => setApprovalFilter('APPROVED')}
+                  >
+                    ✅ Approved & Released ({resolvedApprovals.length})
+                  </button>
+                  <button
+                    className="type-pill"
+                    style={{
+                      background: approvalFilter === 'ALL' ? '#3b82f6' : 'rgba(59, 130, 246, 0.1)',
+                      color: approvalFilter === 'ALL' ? '#ffffff' : '#93c5fd',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      padding: '6px 14px',
+                      fontSize: '0.8rem'
+                    }}
+                    onClick={() => setApprovalFilter('ALL')}
+                  >
+                    📋 All ({approvals.length})
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="approvals-grid">
-                {approvals.filter(a => a.status === 'PENDING').map((ticket) => (
-                  <div key={ticket.id} className="approval-card">
-                    <div>
-                      <div className="approval-card-top">
-                        <div className="approval-title">{ticket.title}</div>
-                        <span className={`type-pill ${
-                          ticket.approval_type === 'INVOICE' ? 'invoice' :
-                          ticket.approval_type === 'CLIENT_EMAIL' ? 'email' :
-                          ticket.approval_type === 'PAYROLL' ? 'payroll' : 'compliance'
-                        }`}>
-                          {ticket.approval_type}
-                        </span>
+
+              {displayedApprovals.length === 0 ? (
+                <div style={{
+                  background: 'var(--bg-card)',
+                  padding: '30px',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  border: '1px dashed var(--border-subtle)',
+                  marginBottom: '32px'
+                }}>
+                  <CheckCircle2 size={32} color="#10b981" style={{ margin: '0 auto 10px' }} />
+                  <p>No approvals found for filter: <strong>{approvalFilter}</strong>.</p>
+                </div>
+              ) : (
+                <div className="approvals-grid">
+                  {displayedApprovals.map((ticket) => {
+                    const isEditing = editingTicketId === ticket.id;
+                    const isMVP = ticket.approval_type === 'MVP_PROPOSAL';
+                    const isQuotation = ticket.approval_type === 'QUOTATION';
+
+                  return (
+                    <div key={ticket.id} className="approval-card" style={{ gridColumn: (isMVP || isQuotation) ? 'span 2' : 'span 1' }}>
+                      <div>
+                        <div className="approval-card-top">
+                          <div>
+                            <div className="approval-title">{ticket.title}</div>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Ticket ID: {ticket.id} | Agent: {ticket.agent_name}</span>
+                          </div>
+                          <span className={`type-pill ${
+                            ticket.approval_type === 'INVOICE' ? 'invoice' :
+                            ticket.approval_type === 'CLIENT_EMAIL' ? 'email' :
+                            ticket.approval_type === 'MVP_PROPOSAL' ? 'mvp' :
+                            ticket.approval_type === 'QUOTATION' ? 'quotation' :
+                            ticket.approval_type === 'PAYROLL' ? 'payroll' : 'compliance'
+                          }`}>
+                            {ticket.approval_type}
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: '0.84rem', color: '#94a3b8', marginBottom: '14px' }}>
+                          {ticket.description}
+                        </p>
+
+                        {/* Interactive Edit Box */}
+                        {isEditing ? (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#a5b4fc', marginBottom: '6px', fontWeight: 600 }}>
+                              ✏️ Modify Payload JSON before Human Sign-off:
+                            </div>
+                            <textarea
+                              style={{
+                                width: '100%',
+                                minHeight: '260px',
+                                background: '#090d16',
+                                color: '#34d399',
+                                border: '1px solid #6366f1',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                fontFamily: 'monospace',
+                                fontSize: '0.82rem',
+                                resize: 'vertical',
+                                boxSizing: 'border-box'
+                              }}
+                              value={editedPayloadText}
+                              onChange={(e) => setEditedPayloadText(e.target.value)}
+                            />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                              <button
+                                className="btn-approve"
+                                style={{ padding: '6px 14px', fontSize: '0.82rem', flex: 'none' }}
+                                onClick={() => {
+                                  try {
+                                    const parsed = JSON.parse(editedPayloadText);
+                                    handleApprovalAction(ticket.id, 'APPROVE', parsed);
+                                    setEditingTicketId(null);
+                                  } catch (e) {
+                                    alert('Invalid JSON: ' + e.message);
+                                  }
+                                }}
+                              >
+                                <Check size={14} /> Save & Release
+                              </button>
+                              <button
+                                className="btn-reject"
+                                style={{ padding: '6px 14px', fontSize: '0.82rem', flex: 'none', background: '#334155' }}
+                                onClick={() => setEditingTicketId(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Rich MVP Preview */}
+                            {isMVP && ticket.payload && (
+                              <div style={{
+                                background: 'rgba(0, 0, 0, 0.35)',
+                                border: '1px solid rgba(139, 92, 246, 0.25)',
+                                borderRadius: '8px',
+                                padding: '14px',
+                                marginBottom: '16px'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
+                                  <span><strong>Client:</strong> {ticket.payload.client_name} ({ticket.payload.contact_email})</span>
+                                  <span style={{ color: '#a78bfa', fontWeight: 600 }}>⚡ {ticket.payload.timeline_weeks} Weeks Delivery</span>
+                                </div>
+                                <p style={{ fontSize: '0.82rem', color: '#cbd5e1', marginBottom: '10px' }}>
+                                  {ticket.payload.summary}
+                                </p>
+                                
+                                {ticket.payload.p0_features && (
+                                  <div style={{ marginBottom: '10px' }}>
+                                    <div style={{ fontSize: '0.78rem', color: '#a78bfa', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
+                                      P0 MVP Modules:
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      {ticket.payload.p0_features.map((f, i) => (
+                                        <div key={i} style={{ fontSize: '0.8rem', color: '#e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+                                          <span>• <strong>{f.feature}:</strong> {f.description}</span>
+                                          <span style={{ color: '#818cf8', fontWeight: 600, marginLeft: '8px' }}>{f.effort_days}d</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {ticket.payload.draft_email && (
+                                  <div style={{ marginTop: '8px', background: 'rgba(15, 23, 42, 0.6)', padding: '10px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                                    <div style={{ color: '#6ee7b7', fontWeight: 600, marginBottom: '4px' }}>Draft Email Subject: {ticket.payload.draft_email.subject}</div>
+                                    <div style={{ color: '#94a3b8', whiteSpace: 'pre-wrap', maxHeight: '100px', overflowY: 'auto' }}>
+                                      {ticket.payload.draft_email.body}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Rich Quotation Preview */}
+                            {isQuotation && ticket.payload && (
+                              <div style={{
+                                background: 'rgba(0, 0, 0, 0.35)',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                borderRadius: '8px',
+                                padding: '14px',
+                                marginBottom: '16px'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                  <span style={{ fontSize: '0.85rem' }}><strong>Quote #:</strong> {ticket.payload.quotation_number}</span>
+                                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#34d399' }}>
+                                    Total: ₹{Number(ticket.payload.grand_total || 0).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '0.78rem', marginBottom: '10px', color: '#cbd5e1' }}>
+                                  <div>Dev Subtotal: <strong>₹{Number(ticket.payload.dev_subtotal || 0).toLocaleString('en-IN')}</strong></div>
+                                  <div>Contingency: <strong>₹{Number(ticket.payload.contingency_amount || 0).toLocaleString('en-IN')}</strong></div>
+                                  <div>Cloud Infra: <strong>₹{Number(ticket.payload.cloud_infra_allowance || 0).toLocaleString('en-IN')}</strong></div>
+                                  <div>GST (18%): <strong>₹{Number(ticket.payload.gst_amount || 0).toLocaleString('en-IN')}</strong></div>
+                                </div>
+
+                                {ticket.payload.milestones && (
+                                  <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.78rem' }}>
+                                    <span style={{ color: '#94a3b8', fontWeight: 600 }}>Payment Terms: </span>
+                                    {ticket.payload.milestones.map((m, idx) => (
+                                      <span key={idx} style={{ marginRight: '12px' }}>
+                                        {m.phase ? m.phase.split(':')[0] : `Phase ${idx+1}`} ({m.percentage}%): <strong style={{ color: '#6ee7b7' }}>₹{Number(m.amount).toLocaleString('en-IN')}</strong>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Standard Preview for other types */}
+                            {!isMVP && !isQuotation && (
+                              <div className="approval-payload-preview">
+                                {JSON.stringify(ticket.payload, null, 2)}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
 
-                      <p style={{ fontSize: '0.84rem', color: '#94a3b8', marginBottom: '12px' }}>
-                        {ticket.description}
-                      </p>
-
-                      <div className="approval-payload-preview">
-                        {JSON.stringify(ticket.payload, null, 2)}
+                      <div className="approval-actions" style={{ marginTop: '12px' }}>
+                        {ticket.status === 'PENDING' ? (
+                          <>
+                            <button
+                              className="btn-approve"
+                              onClick={() => handleApprovalAction(ticket.id, 'APPROVE')}
+                            >
+                              <Check size={16} /> Approve & Release
+                            </button>
+                            <button
+                              style={{
+                                background: '#334155',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#cbd5e1',
+                                borderRadius: '8px',
+                                padding: '8px 14px',
+                                fontSize: '0.84rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingTicketId(null);
+                                } else {
+                                  setEditingTicketId(ticket.id);
+                                  setEditedPayloadText(JSON.stringify(ticket.payload, null, 2));
+                                }
+                              }}
+                            >
+                              <Code2 size={15} /> {isEditing ? 'Close' : 'Edit'}
+                            </button>
+                            <button
+                              className="btn-reject"
+                              onClick={() => handleApprovalAction(ticket.id, 'REJECT')}
+                            >
+                              <X size={16} /> Reject
+                            </button>
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                            <span style={{
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              color: '#34d399',
+                              borderRadius: '8px',
+                              padding: '6px 14px',
+                              fontSize: '0.84rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <CheckCircle2 size={16} /> {ticket.status} by {ticket.resolved_by || 'Admin'}
+                            </span>
+                            {ticket.resolved_at && (
+                              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                Released at {new Date(ticket.resolved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="approval-actions">
-                      <button
-                        className="btn-approve"
-                        onClick={() => handleApprovalAction(ticket.id, 'APPROVE')}
-                      >
-                        <Check size={16} /> Approve & Release
-                      </button>
-                      <button
-                        className="btn-reject"
-                        onClick={() => handleApprovalAction(ticket.id, 'REJECT')}
-                      >
-                        <X size={16} /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
-        )}
+        );
+      })()}
+
 
         {/* AGENT FLEET GRID (Visible on Fleet & Overview) */}
         {(activeTab === 'overview' || activeTab === 'fleet') && (

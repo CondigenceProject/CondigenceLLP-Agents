@@ -49,23 +49,23 @@ async def run_agent_task(
 
     # Stage approvals for all generated sensitive artifacts
     artifacts = final_state.get("artifacts", {})
-    if "invoice_draft" in artifacts:
-        inv = artifacts["invoice_draft"]
-        inv_id = str(uuid.uuid4())[:8]
+
+    if "mvp_proposal" in artifacts:
+        mvp = artifacts["mvp_proposal"]
+        mvp_id = final_state.get("pending_approval_id") or str(uuid.uuid4())[:8]
         ticket = ApprovalTicket(
-            id=inv_id,
+            id=mvp_id,
             task_id=task_id,
-            agent_name="FinanceAgent",
-            approval_type=ApprovalType.INVOICE,
-            title=f"Authorize Invoice {inv.get('invoice_number')} for {inv.get('client_name', 'Client')}",
-            description=f"Draft invoice of {inv.get('currency', 'INR')} {inv.get('total_amount', 0):,.2f} prepared for {inv.get('client_name')}.",
-            payload=inv,
+            agent_name="CommsAgent",
+            approval_type=ApprovalType.MVP_PROPOSAL,
+            title=f"Review MVP Proposal: {mvp.get('project_name', 'Client MVP')}",
+            description=f"Phase 1 MVP Scope ({mvp.get('timeline_weeks', 3)} wks) formulated for {mvp.get('client_name', 'Client')}.",
+            payload=mvp,
             status=ApprovalStatus.PENDING,
             required_role="OWNER"
         )
         register_approval_ticket(ticket)
-
-    if "comms_draft" in artifacts:
+    elif "comms_draft" in artifacts:
         comms = artifacts["comms_draft"]
         comms_id = final_state.get("pending_approval_id") or str(uuid.uuid4())[:8]
         ticket = ApprovalTicket(
@@ -76,6 +76,37 @@ async def run_agent_task(
             title=f"Approve Email: {comms.get('subject', 'Client Communication')[:45]}",
             description=f"Email drafted to {comms.get('recipient', 'client@example.com')}.",
             payload=comms,
+            status=ApprovalStatus.PENDING,
+            required_role="OWNER"
+        )
+        register_approval_ticket(ticket)
+
+    if "quotation" in artifacts:
+        quo = artifacts["quotation"]
+        quo_id = str(uuid.uuid4())[:8]
+        ticket = ApprovalTicket(
+            id=quo_id,
+            task_id=task_id,
+            agent_name="FinanceAgent",
+            approval_type=ApprovalType.QUOTATION,
+            title=f"Authorize Quotation: {quo.get('project_name', 'Client Quotation')}",
+            description=f"Commercial quote of INR {quo.get('grand_total', 0):,.2f} (incl. 18% GST) prepared for {quo.get('client_name')}.",
+            payload=quo,
+            status=ApprovalStatus.PENDING,
+            required_role="OWNER"
+        )
+        register_approval_ticket(ticket)
+    elif "invoice_draft" in artifacts:
+        inv = artifacts["invoice_draft"]
+        inv_id = str(uuid.uuid4())[:8]
+        ticket = ApprovalTicket(
+            id=inv_id,
+            task_id=task_id,
+            agent_name="FinanceAgent",
+            approval_type=ApprovalType.INVOICE,
+            title=f"Authorize Invoice {inv.get('invoice_number')} for {inv.get('client_name', 'Client')}",
+            description=f"Draft invoice of {inv.get('currency', 'INR')} {inv.get('total_amount', 0):,.2f} prepared for {inv.get('client_name')}.",
+            payload=inv,
             status=ApprovalStatus.PENDING,
             required_role="OWNER"
         )
